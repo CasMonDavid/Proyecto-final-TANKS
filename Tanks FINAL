@@ -1,0 +1,1567 @@
+#include <iostream>
+
+#include <allegro5/allegro.h>
+#include <allegro5/allegro_primitives.h>
+#include <allegro5/allegro_image.h>
+#include <allegro5/allegro_native_dialog.h>
+#include <allegro5/allegro_font.h>
+#include <allegro5/allegro_ttf.h>
+#include <allegro5/allegro_audio.h>
+#include <allegro5/allegro_acodec.h>
+#include <string>
+#include <Windows.h>
+
+using namespace std;
+
+int jugar();
+
+void dibujar();
+void funcionamiento_juego();
+void pantalla_gameOVER();
+
+int ancho = 600;
+int alto = 800;
+int segundo = 0;
+float velocidad_ENgeneral = 15;
+
+ALLEGRO_DISPLAY* ventana;
+ALLEGRO_TIMER* segundoTimer;
+ALLEGRO_EVENT_QUEUE* queue;
+ALLEGRO_FONT* lazy;
+ALLEGRO_BITMAP* menu_principal;
+ALLEGRO_BITMAP* menu_opcion1;
+ALLEGRO_BITMAP* menu_opcion2;
+ALLEGRO_BITMAP* juego_fondo;
+ALLEGRO_BITMAP* personaje_arriba;
+ALLEGRO_BITMAP* personaje_abajo;
+ALLEGRO_BITMAP* personaje_derecha;
+ALLEGRO_BITMAP* personaje_izquierda;
+ALLEGRO_BITMAP* bala;
+ALLEGRO_BITMAP* juego_fondoDOS;
+ALLEGRO_BITMAP* game_over;
+ALLEGRO_BITMAP* game_overMENU;
+ALLEGRO_BITMAP* game_overREINTENTAR;
+ALLEGRO_SAMPLE* sonido_Menu;
+ALLEGRO_SAMPLE* sonido_MenuDOS;
+ALLEGRO_SAMPLE* destruccion;
+ALLEGRO_SAMPLE* esponja_triste;
+ALLEGRO_SAMPLE* discord;
+
+int main()
+{
+    al_init();
+    al_init_font_addon();
+    al_init_ttf_addon();
+    al_install_mouse();
+    al_init_primitives_addon();
+    al_init_image_addon();
+    al_install_keyboard();
+    al_init_acodec_addon();
+    al_install_audio();
+
+    int ancho_w = GetSystemMetrics(SM_CXSCREEN);
+    int alto_w = GetSystemMetrics(SM_CYSCREEN);
+    int segundo = 0;
+    int x = -1, y = -1;
+    int botones[] = { 0 };
+
+    ventana = al_create_display(ancho, alto);
+    segundoTimer = al_create_timer(1.0 / velocidad_ENgeneral);
+    queue = al_create_event_queue();
+    lazy = al_load_font("fuentes/lazy.ttf", 40, NULL);
+
+    ALLEGRO_EVENT evento_tiempo;
+
+    //imagenes BMP
+    menu_principal = al_load_bitmap("imagenes/pagina_uno.bmp");
+    menu_opcion1 = al_load_bitmap("imagenes/pagina_dos.bmp");
+    menu_opcion2 = al_load_bitmap("imagenes/pagina_tres.bmp");
+    personaje_arriba = al_load_bitmap("imagenes/personaje_jugador_arriba.png");
+    personaje_abajo = al_load_bitmap("imagenes/personaje_jugador_abajo.png");
+    personaje_derecha = al_load_bitmap("imagenes/personaje_jugador_derecha.png");
+    personaje_izquierda = al_load_bitmap("imagenes/personaje_jugador_izquierda.png");
+    juego_fondo = al_load_bitmap("imagenes/juego_dos.bmp");
+    bala = al_load_bitmap("imagenes/bala_de_dano.png");
+    juego_fondoDOS = al_load_bitmap("imagenes/juego_unoMENU.bmp");
+    game_over = al_load_bitmap("imagenes/juego_finalizado.bmp");
+    game_overMENU = al_load_bitmap("imagenes/juego_finalizadoMENU.bmp");
+    game_overREINTENTAR = al_load_bitmap("imagenes/juego_finalizadoREINTENTAR.bmp");
+
+    //eventos
+    al_register_event_source(queue, al_get_timer_event_source(segundoTimer));
+    al_register_event_source(queue, al_get_mouse_event_source());
+    al_register_event_source(queue, al_get_keyboard_event_source());
+    al_start_timer(segundoTimer);
+
+    al_reserve_samples(5);
+    sonido_Menu = al_load_sample("sonido/iPhone Message Sent Sound Effect(MP3_128K).mp3");
+    sonido_MenuDOS = al_load_sample("sonido/iPhone Message Sent Sound Effect(MP3_128K).mp3");
+    destruccion = al_load_sample("sonido/(HD) Lego Red Brick Sound Effect(MP3_128K).mp3");
+    esponja_triste = al_load_sample("sonido/spongebob disappointed sound (slowed   reverb)(MP3_128K).mp3");
+    discord = al_load_sample("sonido/Discord Disconnect Sound Effect(MP3_70K).mp3");
+
+
+    //Ventana del juego
+    al_set_window_title(ventana, "Tanks");
+    al_set_window_position(ventana, ancho_w / 2 - 600 / 2, alto_w / 2 - 800 / 2);
+
+
+    while (true)
+    {
+        al_wait_for_event(queue, &evento_tiempo);
+        if (evento_tiempo.type == ALLEGRO_EVENT_TIMER) {
+            if (evento_tiempo.timer.source == segundoTimer) {
+                segundo++;
+            }
+        }
+
+        al_clear_to_color(al_map_rgb(0, 0, 0));
+
+        if (botones[0] == 0) {
+            al_draw_bitmap(menu_principal, 0, 0, 0);
+        }
+        else if (botones[0] == 1) {
+            al_draw_bitmap(menu_opcion1, 0, 0, 0);
+        }
+        else {
+            al_draw_bitmap(menu_opcion2, 0, 0, 0);
+        }
+
+        if (evento_tiempo.type == ALLEGRO_EVENT_MOUSE_AXES || evento_tiempo.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
+            x = evento_tiempo.mouse.x;
+            y = evento_tiempo.mouse.y;
+
+            if (x >= 19 && x <= 254 && y >= 110 && y <= 162) {
+                botones[0] = 1;
+                al_play_sample(sonido_Menu, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+                if (evento_tiempo.mouse.button & 1) { //jugar
+                    jugar();
+                }
+            }
+            else {
+                if (x >= 21 && x <= 279 && y >= 167 && y <= 221) { //salir
+                    botones[0] = 2;
+                    al_play_sample(sonido_MenuDOS, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+                    if (evento_tiempo.mouse.button & 1) {
+                        al_destroy_display(ventana);
+                        return 1;
+                    }
+                }
+                else {
+                    botones[0] = 0;
+                }
+            }
+        }
+
+        //al_destroy_sample(sonido_Menu);
+        al_flip_display();
+    }
+    return 0;
+}
+
+ALLEGRO_EVENT evento_jugar;
+
+//float posi_bala_x = 166, posi_bala_y = 375,
+
+float posi_x = 134, posi_y = 343, posi_xDOS = 227, posi_yDOS = 436, esquina_superiorDerecha_X = 227, esquina_superiorDerecha_Y = 343, esquina_inferiorIzquierda_X = 134, esquina_inferiorIzquierda_Y = 436, posi_bala_ORIx = 166, posi_bala_ORIy = 375, velocidad_movimiento = 32;
+int posicion_animacion = 0, puntero[4]{}, limite[5]{}, limite_total = 0, disparo_confirmado[4]{}, enemigo[4]{}, numero_inicio[4]{}, enemigo_vivo[4]{}, o = 0, buscador_de_movimiento = 0, posicion_animacion_enemigo[4]{}, puntero_enemigos[4][4]{}, disparo_enemigo[4][4]{};
+float posi_bala_x[4]{}, posi_bala_y[4]{}, posi_enemigo_x[4]{}, posi_enemigo_xDOS[4]{}, posi_enemigo_y[4]{}, posi_enemigo_yDOS[4]{}, enenmigo_interaccion[4][4]{}, bala_enemiga_x[4][4]{}, bala_enemiga_xORI[4]{}, bala_enemiga_y[4][4]{}, bala_enemiga_yORI[4]{}, posi_enemiga_x_ABAJO[4]{}, posi_enemiga_y_ABAJO[4]{}, posi_enemiga_xDOS_ARRIBA[4]{}, posi_enemiga_yDOS_ARRIBA[4]{};
+int jugador_vivo = 1, game_over_OpcionMENU = 0, game_over_OpcionREINTENTAR = 0, marcador_actual = 0, marcador_mejor = 0;
+
+int jugar()
+{
+        posi_x = 134;
+        posi_y = 343;
+        posi_xDOS = 227;
+        posi_yDOS = 436;
+        esquina_superiorDerecha_X = 227;
+        esquina_superiorDerecha_Y = 343;
+        esquina_inferiorIzquierda_X = 134;
+        esquina_inferiorIzquierda_Y = 436;
+        posi_bala_ORIx = 166;
+        posi_bala_ORIy = 375;
+
+        //Posiciones para colicion EXTRAS
+        posi_enemiga_x_ABAJO[0] = 38;
+        posi_enemiga_y_ABAJO[0] = 147;
+
+        posi_enemiga_x_ABAJO[1] = 262;
+        posi_enemiga_y_ABAJO[1] = 147;
+
+        posi_enemiga_x_ABAJO[2] = 38;
+        posi_enemiga_x_ABAJO[2] = 693;
+
+        posi_enemiga_x_ABAJO[3] = 262;
+        posi_enemiga_y_ABAJO[3] = 693;
+        //*********************************
+        posi_enemiga_xDOS_ARRIBA[0] = 131;
+        posi_enemiga_yDOS_ARRIBA[0] = 53;
+
+        posi_enemiga_xDOS_ARRIBA[1] = 355;
+        posi_enemiga_yDOS_ARRIBA[1] = 53;
+
+        posi_enemiga_xDOS_ARRIBA[2] = 131;
+        posi_enemiga_yDOS_ARRIBA[2] = 601;
+
+        posi_enemiga_xDOS_ARRIBA[3] = 355;
+        posi_enemiga_yDOS_ARRIBA[3] = 601;
+
+        //Posicion inicial del enemigo
+        posi_enemigo_x[0] = 38;
+        posi_enemigo_xDOS[0] = 131;
+        posi_enemigo_y[0] = 55;
+        posi_enemigo_yDOS[0] = 147;
+
+        posi_enemigo_x[1] = 262;
+        posi_enemigo_xDOS[1] = 355;
+        posi_enemigo_y[1] = 55;
+        posi_enemigo_yDOS[1] = 147;
+
+        posi_enemigo_x[2] = 38;
+        posi_enemigo_xDOS[2] = 131;
+        posi_enemigo_y[2] = 599;
+        posi_enemigo_yDOS[2] = 693;
+
+        posi_enemigo_x[3] = 262;
+        posi_enemigo_xDOS[3] = 355;
+        posi_enemigo_y[3] = 599;
+        posi_enemigo_yDOS[3] = 639;
+
+        //posicion inicial de la bala enemiga
+        bala_enemiga_xORI[0] = 70;
+        bala_enemiga_yORI[0] = 85;
+
+        bala_enemiga_xORI[1] = 294;
+        bala_enemiga_yORI[1] = 85;
+
+        bala_enemiga_xORI[2] = 70;
+        bala_enemiga_yORI[2] = 633;
+
+        bala_enemiga_xORI[3] = 294;
+        bala_enemiga_yORI[3] = 633;
+
+        //velocidad de movimiento ENEMIGOS
+
+        velocidad_ENgeneral = 15;
+
+        jugador_vivo = 1;
+
+    bool dibujar_xd = true;
+
+    srand(time(NULL));
+
+    while (true) {
+
+        if (dibujar_xd && al_event_queue_is_empty(queue, &evento_jugar)) {
+            dibujar();
+            dibujar_xd = false;
+        }
+
+        al_wait_for_event(queue, &evento_jugar);
+
+        //regresa al menu
+        if (evento_jugar.type == ALLEGRO_EVENT_KEY_DOWN) {
+            if (evento_jugar.keyboard.keycode == ALLEGRO_KEY_SPACE) {
+                break;
+            }
+        }
+
+        //Juego
+        if (evento_jugar.type == ALLEGRO_EVENT_TIMER) {
+            dibujar_xd = true;
+            funcionamiento_juego();
+        }
+
+    }
+
+    return 1;
+}
+
+void dibujar() {
+
+    al_clear_to_color(al_map_rgb(0, 0, 0));
+    al_draw_bitmap(juego_fondo, 0, 0, 0);
+
+    if (jugador_vivo == 0) {
+        al_clear_to_color(al_map_rgb(0, 0, 0));
+
+        if (game_over_OpcionMENU == 1) {
+            al_draw_bitmap(game_overMENU, 0, 0, 0);
+        }
+        if (game_over_OpcionREINTENTAR == 1) {
+            al_draw_bitmap(game_overREINTENTAR, 0, 0, 0);
+        }
+        if (game_over_OpcionMENU == 0 && game_over_OpcionREINTENTAR == 0) {
+        al_draw_bitmap(game_over, 0, 0, 0);
+        }
+    }
+    else if (jugador_vivo == 1) {
+
+        if (disparo_confirmado[0] == 1) {
+            posi_bala_y[0] += 32;
+            al_draw_bitmap(bala, posi_bala_x[0], posi_bala_y[0], 0);
+            cout << posi_bala_y[0] << endl;
+            limite[4] = 0;
+            if (posi_bala_y[0] > 599 + 32) {
+                disparo_confirmado[0] = 0;
+            }
+        }
+        if (disparo_confirmado[1] == 1) {
+            posi_bala_y[1] -= 32;
+            al_draw_bitmap(bala, posi_bala_x[1], posi_bala_y[1], 0);
+            cout << posi_bala_y[1] << endl;
+            limite[4] = 0;
+            if (posi_bala_y[1] < 50 + 32) {
+                disparo_confirmado[1] = 0;
+            }
+        }
+        if (disparo_confirmado[2] == 1) {
+            posi_bala_x[2] += 32;
+            al_draw_bitmap(bala, posi_bala_x[2], posi_bala_y[2], 0);
+            cout << posi_bala_x[2] << endl;
+            limite[4] = 0;
+            if (posi_bala_x[2] > 262 + 32) {
+                disparo_confirmado[2] = 0;
+            }
+        }
+        if (disparo_confirmado[3] == 1) {
+            posi_bala_x[3] -= 32;
+            al_draw_bitmap(bala, posi_bala_x[3], posi_bala_y[3], 0);
+            cout << posi_bala_x[3] << endl;
+            limite[4] = 0;
+            if (posi_bala_x[3] < 36 + 32) {
+                disparo_confirmado[3] = 0;
+            }
+        }
+
+        //Bala de enemigos
+        if (evento_jugar.type == ALLEGRO_EVENT_TIMER) {
+            if (disparo_enemigo[0][0] == 1) {
+                bala_enemiga_y[0][0] -= 32;
+                al_draw_bitmap(bala, bala_enemiga_x[0][0], bala_enemiga_y[0][0], 0);
+                if (bala_enemiga_y[0][0] < 50 + 32) {
+                    disparo_enemigo[0][0] = 0;
+                }
+            }
+            if (disparo_enemigo[0][1] == 1) {
+                bala_enemiga_y[0][1] += 32;
+                al_draw_bitmap(bala, bala_enemiga_x[0][1], bala_enemiga_y[0][1], 0);
+                if (bala_enemiga_y[0][1] > 599 + 32) {
+                    disparo_enemigo[0][1] = 0;
+                }
+            }
+            if (disparo_enemigo[0][2] == 1) {
+                bala_enemiga_x[0][2] += 32;
+                al_draw_bitmap(bala, bala_enemiga_x[0][2], bala_enemiga_y[0][2], 0);
+                if (bala_enemiga_x[0][2] > 262 + 32) {
+                    disparo_enemigo[0][2] = 0;
+                }
+            }
+            if (disparo_enemigo[0][3] == 1) {
+                bala_enemiga_x[0][3] -= 32;
+                al_draw_bitmap(bala, bala_enemiga_x[0][3], bala_enemiga_y[0][3], 0);
+                if (bala_enemiga_x[0][3] < 36 + 32) {
+                    disparo_enemigo[0][3] = 0;
+                }
+            }
+        }
+        if (evento_jugar.type == ALLEGRO_EVENT_TIMER) {
+            if (disparo_enemigo[1][0] == 1) {
+                bala_enemiga_y[1][0] -= 32;
+                al_draw_bitmap(bala, bala_enemiga_x[1][0], bala_enemiga_y[1][0], 0);
+                if (bala_enemiga_y[1][0] < 50 + 32) {
+                    disparo_enemigo[1][0] = 0;
+                }
+            }
+            if (disparo_enemigo[1][1] == 1) {
+                bala_enemiga_y[1][1] += 32;
+                al_draw_bitmap(bala, bala_enemiga_x[1][1], bala_enemiga_y[1][1], 0);
+                if (bala_enemiga_y[1][1] > 599 + 32) {
+                    disparo_enemigo[1][1] = 0;
+                }
+            }
+            if (disparo_enemigo[1][2] == 1) {
+                bala_enemiga_x[1][2] += 32;
+                al_draw_bitmap(bala, bala_enemiga_x[1][2], bala_enemiga_y[1][2], 0);
+                if (bala_enemiga_x[1][2] > 262 + 32) {
+                    disparo_enemigo[1][2] = 0;
+                }
+            }
+            if (disparo_enemigo[1][3] == 1) {
+                bala_enemiga_x[1][3] -= 32;
+                al_draw_bitmap(bala, bala_enemiga_x[1][3], bala_enemiga_y[1][3], 0);
+                if (bala_enemiga_x[1][3] < 36 + 32) {
+                    disparo_enemigo[1][3] = 0;
+                }
+            }
+        }
+        if (evento_jugar.type == ALLEGRO_EVENT_TIMER) {
+            if (disparo_enemigo[2][0] == 1) {
+                bala_enemiga_y[2][0] -= 32;
+                al_draw_bitmap(bala, bala_enemiga_x[2][0], bala_enemiga_y[2][0], 0);
+                if (bala_enemiga_y[2][0] < 50 + 32) {
+                    disparo_enemigo[2][0] = 0;
+                }
+            }
+            if (disparo_enemigo[2][1] == 1) {
+                bala_enemiga_y[2][1] += 32;
+                al_draw_bitmap(bala, bala_enemiga_x[2][1], bala_enemiga_y[2][1], 0);
+                if (bala_enemiga_y[2][1] > 599 + 64) {
+                    disparo_enemigo[2][1] = 0;
+                }
+            }
+            if (disparo_enemigo[2][2] == 1) {
+                bala_enemiga_x[2][2] += 32;
+                al_draw_bitmap(bala, bala_enemiga_x[2][2], bala_enemiga_y[2][2], 0);
+                if (bala_enemiga_x[2][2] > 262 + 32) {
+                    disparo_enemigo[2][2] = 0;
+                }
+            }
+            if (disparo_enemigo[2][3] == 1) {
+                bala_enemiga_x[2][3] -= 32;
+                al_draw_bitmap(bala, bala_enemiga_x[2][3], bala_enemiga_y[2][3], 0);
+                if (bala_enemiga_x[2][3] < 36 + 32) {
+                    disparo_enemigo[2][3] = 0;
+                }
+            }
+        }
+        if (evento_jugar.type == ALLEGRO_EVENT_TIMER) {
+            if (disparo_enemigo[3][0] == 1) {
+                bala_enemiga_y[3][0] -= 32;
+                al_draw_bitmap(bala, bala_enemiga_x[3][0], bala_enemiga_y[3][0], 0);
+                if (bala_enemiga_y[3][0] < 50 + 32) {
+                    disparo_enemigo[3][0] = 0;
+                }
+            }
+            if (disparo_enemigo[3][1] == 1) {
+                bala_enemiga_y[3][1] += 32;
+                al_draw_bitmap(bala, bala_enemiga_x[3][1], bala_enemiga_y[3][1], 0);
+                if (bala_enemiga_y[3][1] > 599 + 64) {
+                    disparo_enemigo[3][1] = 0;
+                }
+            }
+            if (disparo_enemigo[3][2] == 1) {
+                bala_enemiga_x[3][2] += 32;
+                al_draw_bitmap(bala, bala_enemiga_x[3][2], bala_enemiga_y[3][2], 0);
+                if (bala_enemiga_x[3][2] > 262 + 32) {
+                    disparo_enemigo[3][2] = 0;
+                }
+            }
+            if (disparo_enemigo[3][3] == 1) {
+                bala_enemiga_x[3][3] -= 32;
+                al_draw_bitmap(bala, bala_enemiga_x[3][3], bala_enemiga_y[3][3], 0);
+                if (bala_enemiga_x[3][3] < 36 + 32) {
+                    disparo_enemigo[3][3] = 0;
+                }
+            }
+        }
+
+        if (evento_jugar.type == ALLEGRO_EVENT_TIMER) {
+            if (posicion_animacion_enemigo[0] == 0 && enemigo_vivo[0] == 1) {
+                al_draw_bitmap(personaje_arriba, posi_enemigo_x[0], posi_enemigo_y[0], 0);
+                /*cout << "el enemigo esta mirando arriba" << endl;*/
+            }
+            if (posicion_animacion_enemigo[0] == 1 && enemigo_vivo[0] == 1) {
+                al_draw_bitmap(personaje_abajo, posi_enemigo_x[0], posi_enemigo_y[0], 0);
+                /*cout << "el enemigo esta mirando abajo" << endl;*/
+            }
+            if (posicion_animacion_enemigo[0] == 2 && enemigo_vivo[0] == 1) {
+                al_draw_bitmap(personaje_derecha, posi_enemigo_x[0], posi_enemigo_y[0], 0);
+                /*cout << "el enemigo esta mirando derecha" << endl;*/
+            }
+            if (posicion_animacion_enemigo[0] == 3 && enemigo_vivo[0] == 1) {
+                al_draw_bitmap(personaje_izquierda, posi_enemigo_x[0], posi_enemigo_y[0], 0);
+                /*cout << "el enemigo esta mirando izquierda" << endl;*/
+            }
+        }
+        if (evento_jugar.type == ALLEGRO_EVENT_TIMER) {
+            if (posicion_animacion_enemigo[1] == 0 && enemigo_vivo[1] == 1) {
+                al_draw_bitmap(personaje_arriba, posi_enemigo_x[1], posi_enemigo_y[1], 0);
+                /*cout << "el enemigo esta mirando arriba" << endl;*/
+            }
+            if (posicion_animacion_enemigo[1] == 1 && enemigo_vivo[1] == 1) {
+                al_draw_bitmap(personaje_abajo, posi_enemigo_x[1], posi_enemigo_y[1], 0);
+                /*cout << "el enemigo esta mirando abajo" << endl;*/
+            }
+            if (posicion_animacion_enemigo[1] == 2 && enemigo_vivo[1] == 1) {
+                al_draw_bitmap(personaje_derecha, posi_enemigo_x[1], posi_enemigo_y[1], 0);
+                /*cout << "el enemigo esta mirando derecha" << endl;*/
+            }
+            if (posicion_animacion_enemigo[1] == 3 && enemigo_vivo[1] == 1) {
+                al_draw_bitmap(personaje_izquierda, posi_enemigo_x[1], posi_enemigo_y[1], 0);
+                /*cout << "el enemigo esta mirando izquierda" << endl;*/
+            }
+        }
+        if (evento_jugar.type == ALLEGRO_EVENT_TIMER) {
+            if (posicion_animacion_enemigo[2] == 0 && enemigo_vivo[2] == 1) {
+                al_draw_bitmap(personaje_arriba, posi_enemigo_x[2], posi_enemigo_y[2], 0);
+                /*cout << "el enemigo esta mirando arriba" << endl;*/
+            }
+            if (posicion_animacion_enemigo[2] == 1 && enemigo_vivo[2] == 1) {
+                al_draw_bitmap(personaje_abajo, posi_enemigo_x[2], posi_enemigo_y[2], 0);
+                /*cout << "el enemigo esta mirando abajo" << endl;*/
+            }
+            if (posicion_animacion_enemigo[2] == 2 && enemigo_vivo[2] == 1) {
+                al_draw_bitmap(personaje_derecha, posi_enemigo_x[2], posi_enemigo_y[2], 0);
+                /*cout << "el enemigo esta mirando derecha" << endl;*/
+            }
+            if (posicion_animacion_enemigo[2] == 3 && enemigo_vivo[2] == 1) {
+                al_draw_bitmap(personaje_izquierda, posi_enemigo_x[2], posi_enemigo_y[2], 0);
+                /*cout << "el enemigo esta mirando izquierda" << endl;*/
+            }
+        }
+        if (evento_jugar.type == ALLEGRO_EVENT_TIMER) {
+            if (posicion_animacion_enemigo[3] == 0 && enemigo_vivo[3] == 1) {
+                al_draw_bitmap(personaje_arriba, posi_enemigo_x[3], posi_enemigo_y[3], 0);
+                /*cout << "el enemigo esta mirando arriba" << endl;*/
+            }
+            if (posicion_animacion_enemigo[3] == 1 && enemigo_vivo[3] == 1) {
+                al_draw_bitmap(personaje_abajo, posi_enemigo_x[3], posi_enemigo_y[3], 0);
+                /*cout << "el enemigo esta mirando abajo" << endl;*/
+            }
+            if (posicion_animacion_enemigo[3] == 2 && enemigo_vivo[3] == 1) {
+                al_draw_bitmap(personaje_derecha, posi_enemigo_x[3], posi_enemigo_y[3], 0);
+                /*cout << "el enemigo esta mirando derecha" << endl;*/
+            }
+            if (posicion_animacion_enemigo[3] == 3 && enemigo_vivo[3] == 1) {
+                al_draw_bitmap(personaje_izquierda, posi_enemigo_x[3], posi_enemigo_y[3], 0);
+                /*cout << "el enemigo esta mirando izquierda" << endl;*/
+            }
+
+            //Posicion del personaje
+            if (posicion_animacion == 0) {
+                al_draw_bitmap(personaje_abajo, posi_x, posi_y, 0);
+            }
+            else if (posicion_animacion == 1) {
+                al_draw_bitmap(personaje_arriba, posi_x, posi_y, 0);
+            }
+            else if (posicion_animacion == 2) {
+                al_draw_bitmap(personaje_derecha, posi_x, posi_y, 0);
+            }
+            else {
+                al_draw_bitmap(personaje_izquierda, posi_x, posi_y, 0);
+            }
+        }
+        al_draw_text(lazy, al_map_rgb(0, 0, 0), 391, 200, NULL, (to_string(marcador_actual)).c_str());
+        al_draw_text(lazy, al_map_rgb(0, 0, 0), 391, 315, NULL, (to_string(marcador_mejor)).c_str());
+    }
+    //final
+    
+    al_flip_display();
+}
+
+void funcionamiento_juego() {
+
+    if (jugador_vivo == 1) {
+        //Movimiento del jugador
+        ALLEGRO_KEYBOARD_STATE teclado;
+        al_get_keyboard_state(&teclado);
+
+        if (al_key_down(&teclado, ALLEGRO_KEY_DOWN)) {
+            puntero[0]++;
+            if (puntero[0] > 1) {
+                posi_y += velocidad_movimiento;
+                posi_yDOS += velocidad_movimiento;
+                posi_bala_ORIy += velocidad_movimiento;
+                esquina_inferiorIzquierda_Y += velocidad_movimiento;
+                esquina_superiorDerecha_Y += velocidad_movimiento;
+            }
+            puntero[1] = 0;
+            puntero[2] = 0;
+            puntero[3] = 0;
+        }
+        if (al_key_down(&teclado, ALLEGRO_KEY_UP)) {
+            puntero[1]++;
+            if (puntero[1] > 1) {
+                posi_y -= velocidad_movimiento;
+                posi_yDOS -= velocidad_movimiento;
+                posi_bala_ORIy -= velocidad_movimiento;
+                esquina_inferiorIzquierda_Y -= velocidad_movimiento;
+                esquina_superiorDerecha_Y -= velocidad_movimiento;
+            }
+            puntero[0] = 0;
+            puntero[2] = 0;
+            puntero[3] = 0;
+        }
+        if (al_key_down(&teclado, ALLEGRO_KEY_RIGHT)) {
+            puntero[2]++;
+            if (puntero[2] > 1) {
+                posi_x += velocidad_movimiento;
+                posi_xDOS += velocidad_movimiento;
+                posi_bala_ORIx += velocidad_movimiento;
+                esquina_inferiorIzquierda_X += velocidad_movimiento;
+                esquina_superiorDerecha_X += velocidad_movimiento;
+            }
+            puntero[0] = 0;
+            puntero[1] = 0;
+            puntero[3] = 0;
+        }
+        if (al_key_down(&teclado, ALLEGRO_KEY_LEFT)) {
+            puntero[3]++;
+            if (puntero[3] > 1) {
+                posi_x -= velocidad_movimiento;
+                posi_xDOS -= velocidad_movimiento;
+                posi_bala_ORIx -= velocidad_movimiento;
+                esquina_inferiorIzquierda_X -= velocidad_movimiento;
+                esquina_superiorDerecha_X -= velocidad_movimiento;
+            }
+            puntero[0] = 0;
+            puntero[1] = 0;
+            puntero[2] = 0;
+        }
+
+
+
+        //tiempo
+        if (evento_jugar.type == ALLEGRO_EVENT_TIMER) {
+            if (evento_jugar.timer.source == segundoTimer) {
+                segundo++;
+            }
+        }
+
+        //Bala
+        if (al_key_down(&teclado, ALLEGRO_KEY_Z)) {
+            cout << "Presionaste z" << endl;
+            limite[4] = 1;
+        }
+
+        /* DISPARO CONFIRMADO TABLA DE POSICIONES
+        P 0 = abajo
+        P 1 = arriba
+        p 2 = derecha
+        p 3 = izquierda
+        */
+
+        for (int i = 0; i <= 4; i++) {
+            limite_total = limite_total + limite[i];
+        }
+        if (limite_total == 5 && puntero[0] >= 1) {
+            disparo_confirmado[0] = 1;
+        }
+        if (limite_total == 5 && puntero[1] >= 1) {
+            disparo_confirmado[1] = 1;
+        }
+        if (limite_total == 5 && puntero[2] >= 1) {
+            disparo_confirmado[2] = 1;
+        }
+        if (limite_total == 5 && puntero[3] >= 1) {
+            disparo_confirmado[3] = 1;
+        }
+
+        //Limite de la bala, INTERNO
+
+        if (posi_bala_ORIy < 50 + 32) {
+            posi_bala_ORIy += velocidad_movimiento;
+        }
+        if (posi_bala_ORIy > 599 + 32) {
+            posi_bala_ORIy -= velocidad_movimiento;
+        }
+        if (posi_bala_ORIx < 36 + 32) {
+            posi_bala_ORIx += velocidad_movimiento;
+        }
+        if (posi_bala_ORIx > 262 + 32) {
+            posi_bala_ORIx -= velocidad_movimiento;
+        }
+
+        //limite de la bala externo
+
+        if (posi_bala_x[0] < 36) {
+            limite[0] = 0;
+        }
+        else {
+            limite[0] = 1;
+        }
+        if (posi_bala_x[0] > 262 + 32) {
+            limite[1] = 0;
+        }
+        else {
+            limite[1] = 1;
+        }
+        if (posi_bala_y[0] < 50) {
+            limite[2] = 0;
+        }
+        else {
+            limite[2] = 1;
+        }
+        if (posi_bala_y[0] > 599 + 32) {
+            limite[3] = 0;
+        }
+        else {
+            limite[3] = 1;
+        }
+
+        //terrible
+        if (disparo_confirmado[0] == 0) {
+            posi_bala_x[0] = posi_bala_ORIx;
+            posi_bala_y[0] = posi_bala_ORIy;
+        }
+        if (disparo_confirmado[1] == 0) {
+            posi_bala_x[1] = posi_bala_ORIx;
+            posi_bala_y[1] = posi_bala_ORIy;
+        }
+        if (disparo_confirmado[2] == 0) {
+            posi_bala_x[2] = posi_bala_ORIx;
+            posi_bala_y[2] = posi_bala_ORIy;
+        }
+        if (disparo_confirmado[3] == 0) {
+            posi_bala_x[3] = posi_bala_ORIx;
+            posi_bala_y[3] = posi_bala_ORIy;
+        }
+
+        limite_total = 0;
+
+        if (al_key_down(&teclado, ALLEGRO_KEY_DOWN)) {
+            posicion_animacion = 0;
+        }
+        else if (al_key_down(&teclado, ALLEGRO_KEY_UP)) {
+            posicion_animacion = 1;
+        }
+        else if (al_key_down(&teclado, ALLEGRO_KEY_RIGHT)) {
+            posicion_animacion = 2;
+        }
+        else if (al_key_down(&teclado, ALLEGRO_KEY_LEFT)) {
+            posicion_animacion = 3;
+        }
+
+        //Enemigos
+        if (enemigo[0] == 0) {
+            for (int i = 0; i <= 3; i++) {
+                if (enemigo[i] == 0) {
+                    numero_inicio[i] = rand() % 60 + 1;
+                    enemigo[i] = numero_inicio[i];
+                }
+            }
+            for (int i = 0; i <= 3; i++) {
+                enemigo_vivo[i] = 1;
+            }
+            for (o = 0; o <= 3; o++) {
+                for (int i = 0; i <= 1; i++) {
+                    enenmigo_interaccion[o][i] = rand() % 20 + 1;
+                }
+            }
+        }
+
+        //resureccion enemigos 
+        for (int i = 0; i <= 3; i++) {
+            if (enemigo_vivo[i] == 0) {
+                numero_inicio[i] = rand() % 60 + 1;
+                if (enemigo[i] == numero_inicio[i]) {
+                    enemigo_vivo[i] = 1;
+                    if (i == 0) {
+                        bala_enemiga_xORI[0] = 70;
+                        bala_enemiga_yORI[0] = 85;
+                        posi_enemigo_x[0] = 38;
+                        posi_enemigo_xDOS[0] = 131;
+
+                        posi_enemigo_y[0] = 55;
+                        posi_enemigo_yDOS[0] = 147;
+
+                        posi_enemiga_x_ABAJO[0] = 38;
+                        posi_enemiga_y_ABAJO[0] = 147;
+                        posi_enemiga_xDOS_ARRIBA[0] = 131;
+                        posi_enemiga_yDOS_ARRIBA[0] = 53;
+                    }
+                    if (i == 1) {
+                        bala_enemiga_xORI[1] = 294;
+                        bala_enemiga_yORI[1] = 85;
+
+                        posi_enemigo_x[1] = 262;
+                        posi_enemigo_xDOS[1] = 355;
+                        posi_enemigo_y[1] = 55;
+                        posi_enemigo_yDOS[1] = 147;
+
+                        posi_enemiga_x_ABAJO[1] = 262;
+                        posi_enemiga_y_ABAJO[1] = 147;
+                        posi_enemiga_xDOS_ARRIBA[1] = 355;
+                        posi_enemiga_yDOS_ARRIBA[1] = 53;
+                    }
+                    if (i == 2) {
+                        bala_enemiga_xORI[2] = 70;
+                        bala_enemiga_yORI[2] = 633;
+
+                        posi_enemigo_x[2] = 38;
+                        posi_enemigo_xDOS[2] = 131;
+                        posi_enemigo_y[2] = 599;
+                        posi_enemigo_yDOS[2] = 693;
+
+                        posi_enemiga_x_ABAJO[2] = 38;
+                        posi_enemiga_x_ABAJO[2] = 693;
+                        posi_enemiga_xDOS_ARRIBA[2] = 131;
+                        posi_enemiga_yDOS_ARRIBA[2] = 601;
+                    }
+                    if (i == 3) {
+                        bala_enemiga_xORI[3] = 294;
+                        bala_enemiga_yORI[3] = 633;
+
+                        posi_enemigo_x[3] = 262;
+                        posi_enemigo_xDOS[3] = 355;
+                        posi_enemigo_y[3] = 599;
+                        posi_enemigo_yDOS[3] = 639;
+
+                        posi_enemiga_x_ABAJO[3] = 262;
+                        posi_enemiga_y_ABAJO[3] = 693;
+                        posi_enemiga_xDOS_ARRIBA[3] = 355;
+                        posi_enemiga_yDOS_ARRIBA[3] = 601;
+                    }
+                }
+            }
+        }
+
+        //Animacion del movimiento ENEMIGO
+        if (enemigo_vivo[0] == 1) {
+            buscador_de_movimiento = rand() % 20 + 1;
+            if (buscador_de_movimiento == enenmigo_interaccion[0][0]) {
+                buscador_de_movimiento = rand() % 6 + 1;
+                cout << "itero" << endl;
+                switch (buscador_de_movimiento)
+                {
+                case 1:
+                    puntero_enemigos[0][0]++;
+                    posicion_animacion_enemigo[0] = 0;
+                    if (puntero_enemigos[0][0] > 1) {
+                        posi_enemigo_y[0] = posi_enemigo_y[0] - velocidad_movimiento;
+                        posi_enemigo_yDOS[0] = posi_enemigo_yDOS[0] - velocidad_movimiento;
+                        bala_enemiga_yORI[0] = bala_enemiga_yORI[0] - velocidad_movimiento;
+                        posi_enemiga_y_ABAJO[0] = posi_enemiga_y_ABAJO[0] - velocidad_movimiento;
+                        posi_enemiga_yDOS_ARRIBA[0] = posi_enemiga_yDOS_ARRIBA[0] - velocidad_movimiento;
+                    }
+                    puntero_enemigos[0][1] = 0;
+                    puntero_enemigos[0][2] = 0;
+                    puntero_enemigos[0][3] = 0;
+                    break;
+                case 2:
+                    puntero_enemigos[0][1]++;
+                    posicion_animacion_enemigo[0] = 1;
+                    if (puntero_enemigos[0][1] > 1) {
+                        posi_enemigo_y[0] = posi_enemigo_y[0] + velocidad_movimiento;
+                        posi_enemigo_yDOS[0] = posi_enemigo_yDOS[0] + velocidad_movimiento;
+                        bala_enemiga_yORI[0] = bala_enemiga_yORI[0] + velocidad_movimiento;
+                        posi_enemiga_y_ABAJO[0] = posi_enemiga_y_ABAJO[0] + velocidad_movimiento;
+                        posi_enemiga_yDOS_ARRIBA[0] = posi_enemiga_yDOS_ARRIBA[0] + velocidad_movimiento;
+                    }
+                    puntero_enemigos[0][0] = 0;
+                    puntero_enemigos[0][2] = 0;
+                    puntero_enemigos[0][3] = 0;
+                    break;
+                case 3:
+                    puntero_enemigos[0][2]++;
+                    posicion_animacion_enemigo[0] = 2;
+                    if (puntero_enemigos[0][2] > 1) {
+                        posi_enemigo_x[0] = posi_enemigo_x[0] + 32;
+                        posi_enemigo_xDOS[0] = posi_enemigo_xDOS[0] + 32;
+                        bala_enemiga_xORI[0] = bala_enemiga_xORI[0] + 32;
+                        posi_enemiga_x_ABAJO[0] = posi_enemiga_x_ABAJO[0] + 32;
+                        posi_enemiga_xDOS_ARRIBA[0] = posi_enemiga_xDOS_ARRIBA[0] + 32;
+                    }
+                    puntero_enemigos[0][0] = 0;
+                    puntero_enemigos[0][1] = 0;
+                    puntero_enemigos[0][3] = 0;
+                    break;
+                case 4:
+                    puntero_enemigos[0][3]++;
+                    posicion_animacion_enemigo[0] = 3;
+                    if (puntero_enemigos[0][3] > 1) {
+                        posi_enemigo_x[0] = posi_enemigo_x[0] - 32;
+                        posi_enemigo_xDOS[0] = posi_enemigo_xDOS[0] - 32;
+                        bala_enemiga_xORI[0] = bala_enemiga_xORI[0] - 32;
+                        posi_enemiga_x_ABAJO[0] = posi_enemiga_x_ABAJO[0] - 32;
+                        posi_enemiga_xDOS_ARRIBA[0] = posi_enemiga_xDOS_ARRIBA[0] - 32;
+                    }
+                    puntero_enemigos[0][0] = 0;
+                    puntero_enemigos[0][1] = 0;
+                    puntero_enemigos[0][2] = 0;
+                    break;
+                case 5:
+                    if (puntero_enemigos[0][0] >= 1) {
+                        disparo_enemigo[0][0] = 1;
+                    }
+                    else if (puntero_enemigos[0][1] >= 1) {
+                        disparo_enemigo[0][1] = 1;
+                    }
+                    else if (puntero_enemigos[0][2] >= 1) {
+                        disparo_enemigo[0][2] = 1;
+                    }
+                    else if (puntero_enemigos[0][3] >= 1) {
+                        disparo_enemigo[0][3] = 1;
+                    }
+                    cout << "DISPARO A" << endl;
+                    break;
+                case 6:
+                    if (puntero_enemigos[0][0] >= 1) {
+                        disparo_enemigo[0][0] = 1;
+                    }
+                    else if (puntero_enemigos[0][1] >= 1) {
+                        disparo_enemigo[0][1] = 1;
+                    }
+                    else if (puntero_enemigos[0][2] >= 1) {
+                        disparo_enemigo[0][2] = 1;
+                    }
+                    else if (puntero_enemigos[0][3] >= 1) {
+                        disparo_enemigo[0][3] = 1;
+                    }
+                    cout << "DISPARO A" << endl;
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+        if (enemigo_vivo[1] == 1) {
+            buscador_de_movimiento = rand() % 20 + 1;
+            if (buscador_de_movimiento == enenmigo_interaccion[1][0]) {
+                buscador_de_movimiento = rand() % 5 + 1;
+                cout << "itero 2" << endl;
+                switch (buscador_de_movimiento)
+                {
+                case 1:
+                    puntero_enemigos[1][0]++;
+                    posicion_animacion_enemigo[1] = 0;
+                    if (puntero_enemigos[1][0] > 1) {
+                        posi_enemigo_y[1] = posi_enemigo_y[1] - velocidad_movimiento;
+                        posi_enemigo_yDOS[1] = posi_enemigo_yDOS[1] - velocidad_movimiento;
+                        bala_enemiga_yORI[1] = bala_enemiga_yORI[1] - velocidad_movimiento;
+                        posi_enemiga_y_ABAJO[1] = posi_enemiga_y_ABAJO[1] - velocidad_movimiento;
+                        posi_enemiga_yDOS_ARRIBA[1] = posi_enemiga_yDOS_ARRIBA[1] - velocidad_movimiento;
+                    }
+                    puntero_enemigos[1][1] = 0;
+                    puntero_enemigos[1][2] = 0;
+                    puntero_enemigos[1][3] = 0;
+                    break;
+                case 2:
+                    puntero_enemigos[1][1]++;
+                    posicion_animacion_enemigo[1] = 1;
+                    if (puntero_enemigos[1][1] > 1) {
+                        posi_enemigo_y[1] = posi_enemigo_y[1] + velocidad_movimiento;
+                        posi_enemigo_yDOS[1] = posi_enemigo_yDOS[1] + velocidad_movimiento;
+                        bala_enemiga_yORI[1] = bala_enemiga_yORI[1] + velocidad_movimiento;
+                        posi_enemiga_y_ABAJO[1] = posi_enemiga_y_ABAJO[1] + velocidad_movimiento;
+                        posi_enemiga_yDOS_ARRIBA[1] = posi_enemiga_yDOS_ARRIBA[1] + velocidad_movimiento;
+                    }
+                    puntero_enemigos[1][0] = 0;
+                    puntero_enemigos[1][2] = 0;
+                    puntero_enemigos[1][3] = 0;
+                    break;
+                case 3:
+                    puntero_enemigos[1][2]++;
+                    posicion_animacion_enemigo[1] = 2;
+                    if (puntero_enemigos[1][2] > 1) {
+                        posi_enemigo_x[1] = posi_enemigo_x[1] + 32;
+                        posi_enemigo_xDOS[1] = posi_enemigo_xDOS[1] + 32;
+                        bala_enemiga_xORI[1] = bala_enemiga_xORI[1] + velocidad_movimiento;
+                        posi_enemiga_x_ABAJO[1] = posi_enemiga_x_ABAJO[1] + 32;
+                        posi_enemiga_xDOS_ARRIBA[1] = posi_enemiga_xDOS_ARRIBA[1] + 32;
+                    }
+                    puntero_enemigos[1][0] = 0;
+                    puntero_enemigos[1][1] = 0;
+                    puntero_enemigos[1][3] = 0;
+                    break;
+                case 4:
+                    puntero_enemigos[1][3]++;
+                    posicion_animacion_enemigo[1] = 3;
+                    if (puntero_enemigos[1][3] > 1) {
+                        posi_enemigo_x[1] = posi_enemigo_x[1] - 32;
+                        posi_enemigo_xDOS[1] = posi_enemigo_xDOS[1] - 32;
+                        bala_enemiga_xORI[1] = bala_enemiga_xORI[1] - velocidad_movimiento;
+                        posi_enemiga_x_ABAJO[1] = posi_enemiga_x_ABAJO[1] - 32;
+                        posi_enemiga_xDOS_ARRIBA[1] = posi_enemiga_xDOS_ARRIBA[1] - 32;
+                    }
+                    puntero_enemigos[1][0] = 0;
+                    puntero_enemigos[1][1] = 0;
+                    puntero_enemigos[1][2] = 0;
+                    break;
+                case 5:
+                    if (puntero_enemigos[1][0] >= 1) {
+                        disparo_enemigo[1][0] = 1;
+                    }
+                    else if (puntero_enemigos[1][1] >= 1) {
+                        disparo_enemigo[1][1] = 1;
+                    }
+                    else if (puntero_enemigos[1][2] >= 1) {
+                        disparo_enemigo[1][2] = 1;
+                    }
+                    else if (puntero_enemigos[1][3] >= 1) {
+                        disparo_enemigo[1][3] = 1;
+                    }
+                    cout << "DISPARO B" << endl;
+                    break;
+                case 6:
+                    if (puntero_enemigos[1][0] >= 1) {
+                        disparo_enemigo[1][0] = 1;
+                    }
+                    else if (puntero_enemigos[1][1] >= 1) {
+                        disparo_enemigo[1][1] = 1;
+                    }
+                    else if (puntero_enemigos[1][2] >= 1) {
+                        disparo_enemigo[1][2] = 1;
+                    }
+                    else if (puntero_enemigos[1][3] >= 1) {
+                        disparo_enemigo[1][3] = 1;
+                    }
+                    cout << "DISPARO B" << endl;
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+        if (enemigo_vivo[2] == 1) {
+            buscador_de_movimiento = rand() % 20 + 1;
+            if (buscador_de_movimiento == enenmigo_interaccion[2][0]) {
+                buscador_de_movimiento = rand() % 5 + 1;
+                cout << "itero 3" << endl;
+                switch (buscador_de_movimiento)
+                {
+                case 1:
+                    puntero_enemigos[2][0]++;
+                    posicion_animacion_enemigo[2] = 0;
+                    if (puntero_enemigos[2][0] > 1) {
+                        posi_enemigo_y[2] = posi_enemigo_y[2] - velocidad_movimiento;
+                        posi_enemigo_yDOS[2] = posi_enemigo_yDOS[2] - velocidad_movimiento;
+                        bala_enemiga_yORI[2] = bala_enemiga_yORI[2] - velocidad_movimiento;
+                        posi_enemiga_y_ABAJO[2] = posi_enemiga_y_ABAJO[2] - velocidad_movimiento;
+                        posi_enemiga_yDOS_ARRIBA[2] = posi_enemiga_yDOS_ARRIBA[2] - velocidad_movimiento;
+                    }
+                    puntero_enemigos[2][1] = 0;
+                    puntero_enemigos[2][2] = 0;
+                    puntero_enemigos[2][3] = 0;
+                    break;
+                case 2:
+                    puntero_enemigos[2][1]++;
+                    posicion_animacion_enemigo[2] = 1;
+                    if (puntero_enemigos[2][1] > 1) {
+                        posi_enemigo_y[2] = posi_enemigo_y[2] + velocidad_movimiento;
+                        posi_enemigo_yDOS[2] = posi_enemigo_yDOS[2] + velocidad_movimiento;
+                        bala_enemiga_yORI[2] = bala_enemiga_yORI[2] + velocidad_movimiento;
+                        posi_enemiga_y_ABAJO[2] = posi_enemiga_y_ABAJO[2] + velocidad_movimiento;
+                        posi_enemiga_yDOS_ARRIBA[2] = posi_enemiga_yDOS_ARRIBA[2] + velocidad_movimiento;
+                    }
+                    puntero_enemigos[2][0] = 0;
+                    puntero_enemigos[2][2] = 0;
+                    puntero_enemigos[2][3] = 0;
+                    break;
+                case 3:
+                    puntero_enemigos[2][2]++;
+                    posicion_animacion_enemigo[2] = 2;
+                    if (puntero_enemigos[2][2] > 1) {
+                        posi_enemigo_x[2] = posi_enemigo_x[2] + 32;
+                        posi_enemigo_xDOS[2] = posi_enemigo_xDOS[2] + 32;
+                        bala_enemiga_xORI[2] = bala_enemiga_xORI[2] + velocidad_movimiento;
+                        posi_enemiga_x_ABAJO[2] = posi_enemiga_x_ABAJO[2] + 32;
+                        posi_enemiga_xDOS_ARRIBA[2] = posi_enemiga_xDOS_ARRIBA[2] + 32;
+                    }
+                    puntero_enemigos[2][0] = 0;
+                    puntero_enemigos[2][1] = 0;
+                    puntero_enemigos[2][3] = 0;
+                    break;
+                case 4:
+                    puntero_enemigos[2][3]++;
+                    posicion_animacion_enemigo[2] = 3;
+                    if (puntero_enemigos[2][3] > 1) {
+                        posi_enemigo_x[2] = posi_enemigo_x[2] - 32;
+                        posi_enemigo_xDOS[2] = posi_enemigo_xDOS[2] - 32;
+                        bala_enemiga_xORI[2] = bala_enemiga_xORI[2] - velocidad_movimiento;
+                        posi_enemiga_x_ABAJO[2] = posi_enemiga_x_ABAJO[2] - 32;
+                        posi_enemiga_xDOS_ARRIBA[2] = posi_enemiga_xDOS_ARRIBA[2] - 32;
+                    }
+                    puntero_enemigos[2][0] = 0;
+                    puntero_enemigos[2][1] = 0;
+                    puntero_enemigos[2][2] = 0;
+                    break;
+                case 5:
+                    if (puntero_enemigos[2][0] >= 1) {
+                        disparo_enemigo[2][0] = 1;
+                    }
+                    else if (puntero_enemigos[2][1] >= 1) {
+                        disparo_enemigo[2][1] = 1;
+                    }
+                    else if (puntero_enemigos[2][2] >= 1) {
+                        disparo_enemigo[2][2] = 1;
+                    }
+                    else if (puntero_enemigos[2][3] >= 1) {
+                        disparo_enemigo[2][3] = 1;
+                    }
+                    cout << "DISPARO C" << endl;
+                    break;
+                case 6:
+                    if (puntero_enemigos[2][0] >= 1) {
+                        disparo_enemigo[2][0] = 1;
+                    }
+                    else if (puntero_enemigos[2][1] >= 1) {
+                        disparo_enemigo[2][1] = 1;
+                    }
+                    else if (puntero_enemigos[2][2] >= 1) {
+                        disparo_enemigo[2][2] = 1;
+                    }
+                    else if (puntero_enemigos[2][3] >= 1) {
+                        disparo_enemigo[2][3] = 1;
+                    }
+                    cout << "DISPARO C" << endl;
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+        if (enemigo_vivo[3] == 1) {
+            buscador_de_movimiento = rand() % 20 + 1;
+            if (buscador_de_movimiento == enenmigo_interaccion[3][0]) {
+                buscador_de_movimiento = rand() % 5 + 1;
+                cout << "itero 4" << endl;
+                switch (buscador_de_movimiento)
+                {
+                case 1:
+                    puntero_enemigos[3][0]++;
+                    posicion_animacion_enemigo[3] = 0;
+                    if (puntero_enemigos[3][0] > 1) {
+                        posi_enemigo_y[3] = posi_enemigo_y[3] - velocidad_movimiento;
+                        posi_enemigo_yDOS[3] = posi_enemigo_yDOS[3] - velocidad_movimiento;
+                        bala_enemiga_yORI[3] = bala_enemiga_yORI[3] - velocidad_movimiento;
+                        posi_enemiga_y_ABAJO[3] = posi_enemiga_y_ABAJO[3] - velocidad_movimiento;
+                        posi_enemiga_yDOS_ARRIBA[3] = posi_enemiga_yDOS_ARRIBA[3] - velocidad_movimiento;
+                    }
+                    puntero_enemigos[3][1] = 0;
+                    puntero_enemigos[3][2] = 0;
+                    puntero_enemigos[3][3] = 0;
+                    break;
+                case 2:
+                    puntero_enemigos[3][1]++;
+                    posicion_animacion_enemigo[3] = 1;
+                    if (puntero_enemigos[3][1] > 1) {
+                        posi_enemigo_y[3] = posi_enemigo_y[3] + velocidad_movimiento;
+                        posi_enemigo_yDOS[3] = posi_enemigo_yDOS[3] + velocidad_movimiento;
+                        bala_enemiga_yORI[3] = bala_enemiga_yORI[3] + velocidad_movimiento;
+                        posi_enemiga_y_ABAJO[3] = posi_enemiga_y_ABAJO[3] + velocidad_movimiento;
+                        posi_enemiga_yDOS_ARRIBA[3] = posi_enemiga_yDOS_ARRIBA[3] + velocidad_movimiento;
+                    }
+                    puntero_enemigos[3][0] = 0;
+                    puntero_enemigos[3][2] = 0;
+                    puntero_enemigos[3][3] = 0;
+                    break;
+                case 3:
+                    puntero_enemigos[3][2]++;
+                    posicion_animacion_enemigo[3] = 2;
+                    if (puntero_enemigos[3][2] > 1) {
+                        posi_enemigo_x[3] = posi_enemigo_x[3] + 32;
+                        posi_enemigo_xDOS[3] = posi_enemigo_xDOS[3] + 32;
+                        bala_enemiga_xORI[3] = bala_enemiga_xORI[3] + velocidad_movimiento;
+                        posi_enemiga_x_ABAJO[3] = posi_enemiga_x_ABAJO[3] + 32;
+                        posi_enemiga_xDOS_ARRIBA[3] = posi_enemiga_xDOS_ARRIBA[3] + 32;
+                    }
+                    puntero_enemigos[3][0] = 0;
+                    puntero_enemigos[3][1] = 0;
+                    puntero_enemigos[3][3] = 0;
+                    break;
+                case 4:
+                    puntero_enemigos[3][3]++;
+                    posicion_animacion_enemigo[3] = 3;
+                    if (puntero_enemigos[3][3] > 1) {
+                        posi_enemigo_x[3] = posi_enemigo_x[3] - 32;
+                        posi_enemigo_xDOS[3] = posi_enemigo_xDOS[3] - 32;
+                        bala_enemiga_xORI[3] = bala_enemiga_xORI[3] - velocidad_movimiento;
+                        posi_enemiga_x_ABAJO[3] = posi_enemiga_x_ABAJO[3] - 32;
+                        posi_enemiga_xDOS_ARRIBA[3] = posi_enemiga_xDOS_ARRIBA[3] - 32;
+                    }
+                    puntero_enemigos[3][0] = 0;
+                    puntero_enemigos[3][1] = 0;
+                    puntero_enemigos[3][2] = 0;
+                    break;
+                case 5:
+                    if (puntero_enemigos[3][0] >= 1) {
+                        disparo_enemigo[3][0] = 1;
+                    }
+                    else if (puntero_enemigos[3][1] >= 1) {
+                        disparo_enemigo[3][1] = 1;
+                    }
+                    else if (puntero_enemigos[3][2] >= 1) {
+                        disparo_enemigo[3][2] = 1;
+                    }
+                    else if (puntero_enemigos[3][3] >= 1) {
+                        disparo_enemigo[3][3] = 1;
+                    }
+                    cout << "DISPARO D" << endl;
+                    break;
+                case 6:
+                    if (puntero_enemigos[3][0] >= 1) {
+                        disparo_enemigo[3][0] = 1;
+                    }
+                    else if (puntero_enemigos[3][1] >= 1) {
+                        disparo_enemigo[3][1] = 1;
+                    }
+                    else if (puntero_enemigos[3][2] >= 1) {
+                        disparo_enemigo[3][2] = 1;
+                    }
+                    else if (puntero_enemigos[3][3] >= 1) {
+                        disparo_enemigo[3][3] = 1;
+                    }
+                    cout << "DISPARO D" << endl;
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+
+        //Limite bala enemiga para que vuela a ORIGEN
+
+        /*for (int i = 0; i <= 3; i++) {
+            for (int o; o <= 3; o++) {
+                if (bala_enemiga_x[i][o] < 50 &&)
+            }
+        }*/
+
+        //Reaposisionamiento de la bala enemiga
+        if (disparo_enemigo[0][0] == 0) {
+            bala_enemiga_x[0][0] = bala_enemiga_xORI[0];
+            bala_enemiga_y[0][0] = bala_enemiga_yORI[0];
+        }
+        if (disparo_enemigo[0][1] == 0) {
+            bala_enemiga_x[0][1] = bala_enemiga_xORI[0];
+            bala_enemiga_y[0][1] = bala_enemiga_yORI[0];
+        }
+        if (disparo_enemigo[0][2] == 0) {
+            bala_enemiga_x[0][2] = bala_enemiga_xORI[0];
+            bala_enemiga_y[0][2] = bala_enemiga_yORI[0];
+        }
+        if (disparo_enemigo[0][3] == 0) {
+            bala_enemiga_x[0][3] = bala_enemiga_xORI[0];
+            bala_enemiga_y[0][3] = bala_enemiga_yORI[0];
+        }
+        //
+        if (disparo_enemigo[1][0] == 0) {
+            bala_enemiga_x[1][0] = bala_enemiga_xORI[1];
+            bala_enemiga_y[1][0] = bala_enemiga_yORI[1];
+        }
+        if (disparo_enemigo[1][1] == 0) {
+            bala_enemiga_x[1][1] = bala_enemiga_xORI[1];
+            bala_enemiga_y[1][1] = bala_enemiga_yORI[1];
+        }
+        if (disparo_enemigo[1][2] == 0) {
+            bala_enemiga_x[1][2] = bala_enemiga_xORI[1];
+            bala_enemiga_y[1][2] = bala_enemiga_yORI[1];
+        }
+        if (disparo_enemigo[1][3] == 0) {
+            bala_enemiga_x[1][3] = bala_enemiga_xORI[1];
+            bala_enemiga_y[1][3] = bala_enemiga_yORI[1];
+        }
+        //
+        if (disparo_enemigo[2][0] == 0) {
+            bala_enemiga_x[2][0] = bala_enemiga_xORI[2];
+            bala_enemiga_y[2][0] = bala_enemiga_yORI[2];
+        }
+        if (disparo_enemigo[2][1] == 0) {
+            bala_enemiga_x[2][1] = bala_enemiga_xORI[2];
+            bala_enemiga_y[2][1] = bala_enemiga_yORI[2];
+        }
+        if (disparo_enemigo[2][2] == 0) {
+            bala_enemiga_x[2][2] = bala_enemiga_xORI[2];
+            bala_enemiga_y[2][2] = bala_enemiga_yORI[2];
+        }
+        if (disparo_enemigo[2][3] == 0) {
+            bala_enemiga_x[2][3] = bala_enemiga_xORI[2];
+            bala_enemiga_y[2][3] = bala_enemiga_yORI[2];
+        }
+        //
+        if (disparo_enemigo[3][0] == 0) {
+            bala_enemiga_x[3][0] = bala_enemiga_xORI[3];
+            bala_enemiga_y[3][0] = bala_enemiga_yORI[3];
+        }
+        if (disparo_enemigo[3][1] == 0) {
+            bala_enemiga_x[3][1] = bala_enemiga_xORI[3];
+            bala_enemiga_y[3][1] = bala_enemiga_yORI[3];
+        }
+        if (disparo_enemigo[3][2] == 0) {
+            bala_enemiga_x[3][2] = bala_enemiga_xORI[3];
+            bala_enemiga_y[3][2] = bala_enemiga_yORI[3];
+        }
+        if (disparo_enemigo[3][3] == 0) {
+            bala_enemiga_x[3][3] = bala_enemiga_xORI[3];
+            bala_enemiga_y[3][3] = bala_enemiga_yORI[3];
+        }
+
+        //Limite de la bala enemiga
+        for (int i = 0; i <= 3; i++) {
+            if (enemigo_vivo[i] == 1) {
+                if (bala_enemiga_yORI[i] < 50 + 32) {
+                    bala_enemiga_yORI[i] += velocidad_movimiento;
+                }
+                if (bala_enemiga_yORI[i] > 599 + 64) {
+                    bala_enemiga_yORI[i] -= velocidad_movimiento;
+                }
+                if (bala_enemiga_xORI[i] < 36 + 32) {
+                    bala_enemiga_xORI[i] += velocidad_movimiento;
+                }
+                if (bala_enemiga_xORI[i] > 262 + 32) {
+                    bala_enemiga_xORI[i] -= velocidad_movimiento;
+                }
+            }
+        }
+
+        //Muerte de enemigos
+        if (enemigo_vivo[0] == 1) {
+            if (posi_bala_x[0] >= posi_enemigo_x[0] && posi_bala_x[0] <= posi_enemigo_xDOS[0] && posi_bala_y[0] >= posi_enemigo_y[0] && posi_bala_y[0] <= posi_enemigo_yDOS[0]) {
+                enemigo_vivo[0] = 0;
+            }
+            if (posi_bala_x[1] >= posi_enemigo_x[0] && posi_bala_x[1] <= posi_enemigo_xDOS[0] && posi_bala_y[1] >= posi_enemigo_y[0] && posi_bala_y[1] <= posi_enemigo_yDOS[0]) {
+                enemigo_vivo[0] = 0;
+            }
+            if (posi_bala_x[2] >= posi_enemigo_x[0] && posi_bala_x[2] <= posi_enemigo_xDOS[0] && posi_bala_y[2] >= posi_enemigo_y[0] && posi_bala_y[2] <= posi_enemigo_yDOS[0]) {
+                enemigo_vivo[0] = 0;
+            }
+            if (posi_bala_x[3] >= posi_enemigo_x[0] && posi_bala_x[3] <= posi_enemigo_xDOS[0] && posi_bala_y[3] >= posi_enemigo_y[0] && posi_bala_y[3] <= posi_enemigo_yDOS[0]) {
+                enemigo_vivo[0] = 0;
+            }
+            if (enemigo_vivo[0] == 0) {
+                marcador_actual += 100;
+
+                posi_enemigo_x[0] = 0;
+                posi_enemigo_xDOS[0] = 0;
+                posi_enemigo_y[0] = 0;
+                posi_enemigo_yDOS[0] = 0;
+
+                bala_enemiga_xORI[0] = 0;
+                bala_enemiga_yORI[0] = 0;
+
+                posi_enemiga_x_ABAJO[0] = 0;
+                posi_enemiga_y_ABAJO[0] = 0;
+                posi_enemiga_xDOS_ARRIBA[0] = 0;
+                posi_enemiga_yDOS_ARRIBA[0] = 0;
+            }
+        }
+        if (enemigo_vivo[1] == 1) {
+            if (posi_bala_x[0] >= posi_enemigo_x[1] && posi_bala_x[0] <= posi_enemigo_xDOS[1] && posi_bala_y[0] >= posi_enemigo_y[1] && posi_bala_y[0] <= posi_enemigo_yDOS[1]) {
+                enemigo_vivo[1] = 0;
+            }
+            if (posi_bala_x[1] >= posi_enemigo_x[1] && posi_bala_x[1] <= posi_enemigo_xDOS[1] && posi_bala_y[1] >= posi_enemigo_y[1] && posi_bala_y[1] <= posi_enemigo_yDOS[1]) {
+                enemigo_vivo[1] = 0;
+            }
+            if (posi_bala_x[2] >= posi_enemigo_x[1] && posi_bala_x[2] <= posi_enemigo_xDOS[1] && posi_bala_y[2] >= posi_enemigo_y[1] && posi_bala_y[2] <= posi_enemigo_yDOS[1]) {
+                enemigo_vivo[1] = 0;
+            }
+            if (posi_bala_x[3] >= posi_enemigo_x[1] && posi_bala_x[3] <= posi_enemigo_xDOS[1] && posi_bala_y[3] >= posi_enemigo_y[1] && posi_bala_y[3] <= posi_enemigo_yDOS[1]) {
+                enemigo_vivo[1] = 0;
+            }
+            if (enemigo_vivo[1] == 0) {
+                marcador_actual += 100;
+
+                posi_enemigo_x[1] = 0;
+                posi_enemigo_xDOS[1] = 0;
+                posi_enemigo_y[1] = 0;
+                posi_enemigo_yDOS[1] = 0;
+
+                bala_enemiga_xORI[1] = 0;
+                bala_enemiga_yORI[1] = 0;
+
+                posi_enemiga_x_ABAJO[1] = 0;
+                posi_enemiga_y_ABAJO[1] = 0;
+                posi_enemiga_xDOS_ARRIBA[1] = 0;
+                posi_enemiga_yDOS_ARRIBA[1] = 0;
+            }
+        }
+        if (enemigo_vivo[2] == 1) {
+            if (posi_bala_x[0] >= posi_enemigo_x[2] && posi_bala_x[0] <= posi_enemigo_xDOS[2] && posi_bala_y[0] >= posi_enemigo_y[2] && posi_bala_y[0] <= posi_enemigo_yDOS[2]) {
+                enemigo_vivo[2] = 0;
+            }
+            if (posi_bala_x[1] >= posi_enemigo_x[2] && posi_bala_x[1] <= posi_enemigo_xDOS[2] && posi_bala_y[1] >= posi_enemigo_y[2] && posi_bala_y[1] <= posi_enemigo_yDOS[2]) {
+                enemigo_vivo[2] = 0;
+            }
+            if (posi_bala_x[2] >= posi_enemigo_x[2] && posi_bala_x[2] <= posi_enemigo_xDOS[2] && posi_bala_y[2] >= posi_enemigo_y[2] && posi_bala_y[2] <= posi_enemigo_yDOS[2]) {
+                enemigo_vivo[2] = 0;
+            }
+            if (posi_bala_x[3] >= posi_enemigo_x[2] && posi_bala_x[3] <= posi_enemigo_xDOS[2] && posi_bala_y[3] >= posi_enemigo_y[2] && posi_bala_y[3] <= posi_enemigo_yDOS[2]) {
+                enemigo_vivo[2] = 0;
+            }
+            if (enemigo_vivo[2] == 0) {
+                marcador_actual += 100;
+
+                posi_enemigo_x[2] = 0;
+                posi_enemigo_xDOS[2] = 0;
+                posi_enemigo_y[2] = 0;
+                posi_enemigo_yDOS[2] = 0;
+
+                bala_enemiga_xORI[2] = 0;
+                bala_enemiga_yORI[2] = 0;
+
+                posi_enemiga_x_ABAJO[2] = 0;
+                posi_enemiga_y_ABAJO[2] = 0;
+                posi_enemiga_xDOS_ARRIBA[2] = 0;
+                posi_enemiga_yDOS_ARRIBA[2] = 0;
+            }
+        }
+        if (enemigo_vivo[3] == 1) {
+            if (posi_bala_x[0] >= posi_enemigo_x[3] && posi_bala_x[0] <= posi_enemigo_xDOS[3] && posi_bala_y[0] >= posi_enemigo_y[3] && posi_bala_y[0] <= posi_enemigo_yDOS[3]) {
+                enemigo_vivo[3] = 0;
+            }
+            if (posi_bala_x[1] >= posi_enemigo_x[3] && posi_bala_x[1] <= posi_enemigo_xDOS[3] && posi_bala_y[1] >= posi_enemigo_y[3] && posi_bala_y[1] <= posi_enemigo_yDOS[3]) {
+                enemigo_vivo[3] = 0;
+            }
+            if (posi_bala_x[2] >= posi_enemigo_x[3] && posi_bala_x[2] <= posi_enemigo_xDOS[3] && posi_bala_y[2] >= posi_enemigo_y[3] && posi_bala_y[2] <= posi_enemigo_yDOS[3]) {
+                enemigo_vivo[3] = 0;
+            }
+            if (posi_bala_x[3] >= posi_enemigo_x[3] && posi_bala_x[3] <= posi_enemigo_xDOS[3] && posi_bala_y[3] >= posi_enemigo_y[3] && posi_bala_y[3] <= posi_enemigo_yDOS[3]) {
+                enemigo_vivo[3] = 0;
+            }
+            if (enemigo_vivo[3] == 0) {
+                marcador_actual += 100;
+                posi_enemigo_x[3] = 0;
+                posi_enemigo_xDOS[3] = 0;
+                posi_enemigo_y[3] = 0;
+                posi_enemigo_yDOS[3] = 0;
+
+                bala_enemiga_xORI[3] = 0;
+                bala_enemiga_yORI[3] = 0;
+
+                posi_enemiga_x_ABAJO[3] = 0;
+                posi_enemiga_y_ABAJO[3] = 0;
+                posi_enemiga_xDOS_ARRIBA[3] = 0;
+                posi_enemiga_yDOS_ARRIBA[3] = 0;
+            }
+        }
+
+        //Limitante del mapa ENEMIGOS
+        for (int i = 0; i <= 3; i++) {
+            if (posi_enemigo_y[i] < 50) {
+                posi_enemigo_y[i] += velocidad_movimiento;
+                posi_enemigo_yDOS[i] += velocidad_movimiento;
+                posi_enemiga_y_ABAJO[i] += velocidad_movimiento;
+                posi_enemiga_yDOS_ARRIBA[i] += velocidad_movimiento;
+            }
+            if (posi_enemigo_y[i] > 599) {
+                posi_enemigo_y[i] -= velocidad_movimiento;
+                posi_enemigo_yDOS[i] -= velocidad_movimiento;
+                posi_enemiga_y_ABAJO[i] -= velocidad_movimiento;
+                posi_enemiga_yDOS_ARRIBA[i] -= velocidad_movimiento;
+            }
+            if (posi_enemigo_x[i] < 36) {
+                posi_enemigo_x[i] += velocidad_movimiento;
+                posi_enemigo_xDOS[i] += velocidad_movimiento;
+                posi_enemiga_x_ABAJO[i] += velocidad_movimiento;
+                posi_enemiga_xDOS_ARRIBA[i] += velocidad_movimiento;
+            }
+            if (posi_enemigo_x[i] > 262) {
+                posi_enemigo_x[i] -= velocidad_movimiento;
+                posi_enemigo_xDOS[i] -= velocidad_movimiento;
+                posi_enemiga_x_ABAJO[i] -= velocidad_movimiento;
+                posi_enemiga_xDOS_ARRIBA[i] -= velocidad_movimiento;
+            }
+        }
+
+        //Limitante del mapa
+        if (posi_y < 50) {
+            posi_y += velocidad_movimiento;
+            posi_yDOS += velocidad_movimiento;
+            esquina_inferiorIzquierda_Y += velocidad_movimiento;
+            esquina_superiorDerecha_Y += velocidad_movimiento;
+        }
+        if (posi_y > 599) {
+            posi_y -= velocidad_movimiento;
+            posi_yDOS -= velocidad_movimiento;
+            esquina_inferiorIzquierda_Y -= velocidad_movimiento;
+            esquina_superiorDerecha_Y -= velocidad_movimiento;
+        }
+        if (posi_x < 36) {
+            posi_x += velocidad_movimiento;
+            posi_xDOS += velocidad_movimiento;
+            esquina_inferiorIzquierda_X += velocidad_movimiento;
+            esquina_superiorDerecha_X += velocidad_movimiento;
+        }
+        if (posi_x > 262) {
+            posi_x -= velocidad_movimiento;
+            posi_xDOS -= velocidad_movimiento;
+            esquina_inferiorIzquierda_X -= velocidad_movimiento;
+            esquina_superiorDerecha_X -= velocidad_movimiento;
+        }
+
+        //escape
+        if (al_key_down(&teclado, ALLEGRO_KEY_ESCAPE)) {
+            al_play_sample(esponja_triste, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+            pantalla_gameOVER();
+        }
+
+        //Muerte del jugador COLISION
+        for (int i = 0; i <= 3; i++) {
+            //esquina superior izquierda
+            if (posi_x >= posi_enemigo_x[i] && posi_x <= posi_enemigo_xDOS[i] && posi_y >= posi_enemigo_y[i] && posi_y <= posi_enemigo_yDOS[i]) {
+                al_play_sample(destruccion, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+                pantalla_gameOVER();
+            }
+            //esquina superior derecha
+            if (esquina_superiorDerecha_X >= posi_enemigo_x[i] && esquina_superiorDerecha_X <= posi_enemigo_xDOS[i] && esquina_superiorDerecha_Y >= posi_enemigo_y[i] && esquina_superiorDerecha_Y <= posi_enemigo_yDOS[i]) {
+                al_play_sample(destruccion, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+                pantalla_gameOVER();
+            }
+            //esquina inferior izquierda
+            if (esquina_inferiorIzquierda_X >= posi_enemigo_x[i] && esquina_inferiorIzquierda_X <= posi_enemigo_xDOS[i] && esquina_inferiorIzquierda_Y >= posi_enemigo_y[i] && esquina_inferiorIzquierda_Y <= posi_enemigo_yDOS[i]) {
+                al_play_sample(destruccion, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+                pantalla_gameOVER();
+            }
+            //esquina inferior derecha
+            if (posi_xDOS >= posi_enemigo_x[i] && posi_xDOS <= posi_enemigo_xDOS[i] && posi_yDOS >= posi_enemigo_y[i] && posi_yDOS <= posi_enemigo_yDOS[i]) {
+                al_play_sample(destruccion, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+                pantalla_gameOVER();
+            }
+        }
+
+        //Muerte del jugador BALA ENEMIGA
+        for (int i = 0; i <= 3; i++) {
+            for (int o = 0; o <= 3; o++) {
+                if (bala_enemiga_x[i][o] >= posi_x && bala_enemiga_x[i][o] <= posi_xDOS && bala_enemiga_y[i][o] >= posi_y && bala_enemiga_y[i][o] <= posi_yDOS) {
+                    al_play_sample(destruccion, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+                    pantalla_gameOVER();
+                }
+            }
+        }
+    }
+    else if (jugador_vivo == 0) {
+        ALLEGRO_KEYBOARD_STATE teclado;
+        al_get_keyboard_state(&teclado);
+
+        if (al_key_down(&teclado, ALLEGRO_KEY_UP)) {
+            game_over_OpcionMENU = 1;
+            game_over_OpcionREINTENTAR = 0;
+        }
+        else if (al_key_down(&teclado, ALLEGRO_KEY_DOWN)) {
+            game_over_OpcionREINTENTAR = 1;
+            game_over_OpcionMENU = 0;
+
+        }
+        if (al_key_down(&teclado, ALLEGRO_KEY_Z) && game_over_OpcionMENU == 1) {
+            al_play_sample(discord, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+            main();
+        }
+        if (al_key_down(&teclado, ALLEGRO_KEY_Z) && game_over_OpcionREINTENTAR == 1) {
+            al_play_sample(discord, 1.0, 0.0, 1.0, ALLEGRO_PLAYMODE_ONCE, NULL);
+            jugar();
+        }
+    }
+}
+
+void pantalla_gameOVER() {
+    jugador_vivo = 0;
+
+    if (marcador_actual >= marcador_mejor) {
+        marcador_mejor = marcador_actual;
+        marcador_actual = 0;
+    }
+    else {
+        marcador_actual = 0;
+    }
+
+    for (int i = 0; i <= 3; i++) {
+        if (jugador_vivo == 0) {
+            posi_enemigo_x[i] = 0;
+            posi_enemigo_xDOS[i] = 0;
+            posi_enemigo_y[i] = 0;
+            posi_enemigo_yDOS[i] = 0;
+
+            bala_enemiga_xORI[i] = 0;
+            bala_enemiga_yORI[i] = 0;
+
+            posi_enemiga_x_ABAJO[i] = 0;
+            posi_enemiga_y_ABAJO[i] = 0;
+            posi_enemiga_xDOS_ARRIBA[i] = 0;
+            posi_enemiga_yDOS_ARRIBA[i] = 0;
+
+            enemigo_vivo[i] = 1;
+        }
+    }
+}
